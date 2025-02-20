@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Robot Control</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-pzjw8f+ua7Kw1TIq0c3zR7RxJk2R2hw5c7yQzB2AWyjo3uFzF+ksZqB1s6a9uLeJ" crossorigin="anonymous">
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+    button { padding: 15px 25px; font-size: 20px; }
+    .button-container { margin: 20px auto; }
+
+    /* Joystick Styles */
+    .joystick-container {
+      position: relative;
+      margin: 0 auto;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background-color: #f0f0f0;
+      border: 2px solid #ccc;
+    }
+    .joystick-knob {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background-color: #007bff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .joystick-container:hover {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Control the Robot</h1>
+
+  <!-- Joystick Container -->
+  <div class="joystick-container" id="joystick">
+    <div class="joystick-knob" id="joystickKnob"></div>
+  </div>
+
+  <!-- Function Button -->
+  <div class="container button-container">
+    <div class="row">
+      <div class="col-12">
+        <button id="functionBtn" class="btn btn-success btn-lg btn-block">Function</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS and Popper.js -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zydQwzq6X5t4I1psgD1g6O7zYhFjwzN7e5WaH6gD" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.0/dist/umd/popper.min.js" integrity="sha384-pzjw8f+ua7Kw1TIq0c3zR7RxJk2R2hw5c7yQzB2AWyjo3uFzF+ksZqB1s6a9uLeJ" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-pzjw8f+ua7Kw1TIq0c3zR7RxJk2R2hw5c7yQzB2AWyjo3uFzF+ksZqB1s6a9uLeJ" crossorigin="anonymous"></script>
+
+  <script>
+    // Joystick control variables
+    const joystick = document.getElementById('joystick');
+    const joystickKnob = document.getElementById('joystickKnob');
+    const joystickRadius = joystick.offsetWidth / 2;
+    const knobRadius = joystickKnob.offsetWidth / 2;
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    // Start dragging the knob
+    joystickKnob.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // Prevent text selection while dragging
+      isDragging = true;
+
+      // Calculate initial mouse position
+      offsetX = e.clientX - joystickKnob.offsetLeft;
+      offsetY = e.clientY - joystickKnob.offsetTop;
+    });
+
+    // Drag the knob with the mouse
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      // Calculate new knob position
+      let newX = e.clientX - offsetX;
+      let newY = e.clientY - offsetY;
+
+      // Ensure the knob stays within the joystick container's bounds
+      const dist = Math.min(Math.sqrt(Math.pow(newX - joystickRadius, 2) + Math.pow(newY - joystickRadius, 2)), joystickRadius - knobRadius);
+
+      // Calculate knob position based on mouse drag
+      const angle = Math.atan2(newY - joystickRadius, newX - joystickRadius);
+      newX = joystickRadius + dist * Math.cos(angle) - knobRadius;
+      newY = joystickRadius + dist * Math.sin(angle) - knobRadius;
+
+      // Apply the new knob position
+      joystickKnob.style.left = newX + 'px';
+      joystickKnob.style.top = newY + 'px';
+
+      // Calculate the X and Y axis values in the range of -10 to +10
+      const xValue = Math.round(((newX - joystickRadius) / joystickRadius) * 10);
+      const yValue = Math.round(((newY - joystickRadius) / joystickRadius) * 10);
+
+      // Send joystick values (x, y) to backend
+      fetch(`http://localhost:3000/control?x=${xValue}&y=${yValue}`);
+    });
+
+    // Stop dragging the knob and reset to center position
+    document.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+
+      // Reset knob position to the center
+      joystickKnob.style.left = '75px';
+      joystickKnob.style.top = '75px';
+      fetch('http://localhost:3000/stop'); // Send stop command when released
+    });
+
+    // Function Button (Function 1)
+    document.getElementById('functionBtn').addEventListener('click', () => {
+    fetch('http://localhost:3000/function1'); // Send the "f1" command
+    });
+</script>
+
+</body>
+</html>
