@@ -1,30 +1,12 @@
 #include <Adafruit_NeoPixel.h>
-#include <DFRobotDFPlayerMini.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 
-// LED Configuration
 #define LED_PIN_1     D9   // GPIO pin for first strip
 #define LED_PIN_2     D10  // GPIO pin for second strip
 #define LED_COUNT     8   // LEDs per strip
-#define BRIGHTNESS    128  // Default brightness (0-255)
+#define BRIGHTNESS    32  // Default brightness (0-255)
 
 Adafruit_NeoPixel strip1(LED_COUNT, LED_PIN_1, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip2(LED_COUNT, LED_PIN_2, NEO_GRB + NEO_KHZ800);
-
-// OLED Display Configuration
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET -1
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
-// DFPlayer Mini UART (Serial1 on Nano 33 BLE Sense)
-#define PIN_MP3_RX D0  // DFPlayer TX → Arduino D0 (RX)
-#define PIN_MP3_TX D1  // DFPlayer RX → Arduino D1 (TX)
-#define BUSY_PIN A6    // Optional (LOW = playing, HIGH = paused/stopped)
-#define BUFFER_SIZE 20
-DFRobotDFPlayerMini player;
 
 // System states
 enum Mode {
@@ -38,30 +20,18 @@ enum Mode {
   void runIdleAnimation(uint32_t currentMillis);
   void runMotionDisplay(uint32_t currentMillis, float currentAngle);
   void runAudioVisualizer(uint32_t currentMillis, uint8_t currentVol);
-  void updateDisplay(uint32_t currentMillis, uint16_t currentTrack, bool isConnected);
   void processcommand(void);
   void clearAll();
   uint32_t Wheel(byte WheelPos);
 
-  
-bool isPlaying = false;  // Track playback state
-Mode currentMode = IDLE_ANIMATION;
+  Mode currentMode = IDLE_ANIMATION;
 bool ledsOn = true;
 unsigned long lastModeChange = 0;
 unsigned long lastLEDUpdate = 0;
 unsigned long lastAudioUpdate = 0;
 unsigned long lastDisplayUpdate = 0;
-const uint16_t LED_UPDATE_INTERVAL = 20;  // 20ms = 50Hz refresh
+const uint16_t LED_UPDATE_INTERVAL = 100;  // 20ms = 50Hz refresh
 const uint16_t AUDIO_UPDATE_INTERVAL = 10; // 10ms audio refresh
-const uint16_t DISPLAY_UPDATE_INTERVAL = 200; // 200ms display refresh
-bool updateTrackNext = true;  // Alternates between track/volume updates
-uint16_t currentTrack = 1;    // Track number (1-65535)
-uint8_t currentVolume = 20;   // Volume (0-30)
-
-// Track names - customize these
-const char* trackNames[] = {
-  "Rickroll", "Rumbling", "Nyannyan",
-};
 
 void clearAll() {
     strip1.clear();
@@ -143,61 +113,3 @@ void clearAll() {
     strip1.show();
     strip2.show();
   }
-
-void updateDisplay(uint32_t currentMillis, uint16_t currentTrack, bool isConnected) {
-  display.clearDisplay();
-  
-  // Battery percentage
-  uint8_t vol = analogRead(A0);
-  Serial.println(vol);
-  // Determine number of blocks to display (0-3)
-  uint8_t batteryBlocks;
-  if (vol <= 1)       batteryBlocks = 0;  // Empty
-  else if (vol <= 5) batteryBlocks = 1;  // 1 block
-  else if (vol <= 10) batteryBlocks = 2;  // 2 blocks
-  else                    batteryBlocks = 3;  // 3 blocks (full)
-
-  // Display battery blocks (simpler visual)
-  display.drawRect(104, 0, 16, 8, SSD1306_WHITE);  // Outer battery shape
-  display.fillRect(120, 3, 2, 3, SSD1306_WHITE);   // Battery tip
-  
-  // Fill blocks based on level (each block = 4px wide, 1px spacing)
-  for (uint8_t i = 0; i < batteryBlocks; i++) {
-    display.fillRect(105 + (i * 5), 1, 4, 6, SSD1306_WHITE);
-  }
-  
-  if (isConnected) {
-    // Bluetooth status (top left)
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.print("Connected");
-
-    // Track info (center, large text)
-    if (currentTrack == 0) {
-      display.setTextSize(2);
-      display.setCursor(0, 30);
-      display.print("No Song");
-    } else {
-      display.setTextSize(2);
-      display.setCursor(0, 30);
-      display.print(trackNames[currentTrack - 1]);
-    }
-    
-    // Play/pause status using BUSY pin
-    display.setTextSize(1);
-    display.setCursor(0, 50);
-    if (isPlaying) {
-      display.print("Now Playing");
-    } else {
-      display.print("Paused");
-    }
-  } else {
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.print("Disconnected");
-  }
-  
-  display.display();
-}
